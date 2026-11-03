@@ -77,7 +77,7 @@ pipeline {
             steps{
                 script{
                    withDockerRegistry(credentialsId: 'docker') {
-                       sh "docker build --no-cache --build-arg TMDB_V3_API_KEY=82f8ec5199456f6d6b4a79e61f14a43c -t netflix:${BUILD_NUMBER} . "
+                       sh "docker build --no-cache -t netflix:${BUILD_NUMBER} ."
                        sh "docker tag netflix:${BUILD_NUMBER} gsharma1298/netflix:${BUILD_NUMBER} "
                        sh "docker push gsharma1298/netflix:${BUILD_NUMBER} "
                     }
