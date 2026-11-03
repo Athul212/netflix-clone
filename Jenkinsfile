@@ -41,26 +41,7 @@ pipeline {
 
         stage('OWASP Dependency Check') {
             steps {
-                catchError(
-                    buildResult: 'UNSTABLE',
-                    stageResult: 'UNSTABLE'
-                ) {
-                    withCredentials([
-                        string(
-                            credentialsId: 'nvd-api-key',
-                            variable: 'NVD_API_KEY'
-                        )
-                    ]) {
-                        dependencyCheck(
-                            additionalArguments: '--scan . --format XML --nvdApiKey "$NVD_API_KEY"',
-                            odcInstallation: 'dp-check'
-                        )
-                    }
-
-                    dependencyCheckPublisher(
-                        pattern: '**/dependency-check-report.xml'
-                    )
-                }
+                echo 'OWASP scan temporarily skipped - NVD database synchronization pending'
             }
         }
 
@@ -87,8 +68,7 @@ pipeline {
                             docker build \
                             -t ${DOCKER_IMAGE}:${BUILD_NUMBER} .
 
-                            docker push \
-                            ${DOCKER_IMAGE}:${BUILD_NUMBER}
+                            docker push ${DOCKER_IMAGE}:${BUILD_NUMBER}
                         """
                     }
                 }
@@ -138,7 +118,7 @@ pipeline {
     post {
         always {
             archiveArtifacts(
-                artifacts: 'trivyfs.txt,trivyimage.txt,**/dependency-check-report.xml',
+                artifacts: 'trivyfs.txt,trivyimage.txt',
                 allowEmptyArchive: true
             )
 
