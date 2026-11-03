@@ -78,15 +78,15 @@ pipeline {
                 script{
                    withDockerRegistry(credentialsId: 'docker') {
                        sh "docker build --no-cache -t netflix:${BUILD_NUMBER} ."
-                       sh "docker tag netflix:${BUILD_NUMBER} gsharma1298/netflix:${BUILD_NUMBER} "
-                       sh "docker push gsharma1298/netflix:${BUILD_NUMBER} "
+                       sh "docker tag netflix:${BUILD_NUMBER} athul212/netflix:${BUILD_NUMBER}"
+sh "docker push athul212/netflix:${BUILD_NUMBER}"
                     }
                 }
             }
         }
         stage("TRIVY"){
             steps{
-                sh "trivy image gsharma1298/netflix:${BUILD_NUMBER} > trivyimage.txt"
+                sh "trivy image athul212/netflix:${BUILD_NUMBER} > trivyimage.txt"
             }
         }
         
@@ -94,7 +94,7 @@ pipeline {
             steps{
                 sh '''
                 docker rm -f netflix
-                docker run -d --name netflix -p 8081:80 gsharma1298/netflix:${BUILD_NUMBER}
+                docker run -d --name netflix -p 8081:80 athul212/netflix:${BUILD_NUMBER}
                 '''
             }
         }
