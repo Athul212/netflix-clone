@@ -13,6 +13,7 @@ pipeline {
     }
 
     stages {
+
         stage('Checkout Code') {
             steps {
                 checkout scm
@@ -40,12 +41,15 @@ pipeline {
 
         stage('OWASP Dependency Check') {
             steps {
-                catchError(buildResult: 'UNSTABLE',
-                           stageResult: 'UNSTABLE') {
+                catchError(
+                    buildResult: 'UNSTABLE',
+                    stageResult: 'UNSTABLE'
+                ) {
                     dependencyCheck(
-                        additionalArguments: '--scan . --format XML --noupdate',
+                        additionalArguments: '--scan . --format XML',
                         odcInstallation: 'dp-check'
                     )
+
                     dependencyCheckPublisher(
                         pattern: '**/dependency-check-report.xml'
                     )
@@ -114,8 +118,10 @@ pipeline {
             steps {
                 sh '''
                     sleep 5
+
                     curl --fail --silent --show-error \
                     http://127.0.0.1:8081/ > /dev/null
+
                     echo "Netflix application is responding!"
                 '''
             }
@@ -128,6 +134,7 @@ pipeline {
                 artifacts: 'trivyfs.txt,trivyimage.txt,**/dependency-check-report.xml',
                 allowEmptyArchive: true
             )
+
             echo "Pipeline completed: ${currentBuild.currentResult}"
         }
     }
