@@ -102,17 +102,7 @@ sh "docker push athul212/netflix:${BUILD_NUMBER}"
 }
 
     post {
-        always {
-            emailext(
-                attachLog: true,
-                subject: "${currentBuild.currentResult}: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                body: """Project: ${env.JOB_NAME}
-Build Number: ${env.BUILD_NUMBER}
-Status: ${currentBuild.currentResult}
-URL: ${env.BUILD_URL}
-""",
-                to: 'gsharma1298@gmail.com'
-            )
-        }
+    always {
+        echo "Pipeline completed with status: ${currentBuild.currentResult}"
     }
 }
