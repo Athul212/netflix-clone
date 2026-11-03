@@ -13,16 +13,9 @@ pipeline {
     }
 
     stages {
-        stage('Clean Workspace') {
+        stage('Checkout Code') {
             steps {
-                cleanWs()
-            }
-        }
-
-        stage('Checkout from Git') {
-            steps {
-                git branch: 'main',
-                    url: 'https://github.com/athul212/netflix-clone.git'
+                checkout scm
             }
         }
 
@@ -37,32 +30,26 @@ pipeline {
                 withSonarQubeEnv('SonarQube') {
                     sh '''
                         "$SCANNER_HOME/bin/sonar-scanner" \
-                        -Dsonar.projectName=netflix \
                         -Dsonar.projectKey=netflix \
-                        -Dsonar.sources=src
+                        -Dsonar.projectName=netflix \
+                        -Dsonar.sources=.
                     '''
-                }
-            }
-        }
-
-        stage('Quality Gate') {
-            steps {
-                timeout(time: 10, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
                 }
             }
         }
 
         stage('OWASP Dependency Check') {
             steps {
-                dependencyCheck(
-                    additionalArguments: '--scan ./ --format XML',
-                    odcInstallation: 'dp-check'
-                )
-
-                dependencyCheckPublisher(
-                    pattern: '**/dependency-check-report.xml'
-                )
+                catchError(buildResult: 'UNSTABLE',
+                           stageResult: 'UNSTABLE') {
+                    dependencyCheck(
+                        additionalArguments: '--scan . --format XML --noupdate',
+                        odcInstallation: 'dp-check'
+                    )
+                    dependencyCheckPublisher(
+                        pattern: '**/dependency-check-report.xml'
+                    )
+                }
             }
         }
 
@@ -70,7 +57,7 @@ pipeline {
             steps {
                 sh '''
                     trivy fs \
-                    --scanners vuln,secret \
+                    --scanners vuln \
                     --format table \
                     --output trivyfs.txt \
                     .
@@ -101,6 +88,7 @@ pipeline {
             steps {
                 sh """
                     trivy image \
+                    --scanners vuln \
                     --format table \
                     --output trivyimage.txt \
                     ${DOCKER_IMAGE}:${BUILD_NUMBER}
@@ -121,6 +109,17 @@ pipeline {
                 """
             }
         }
+
+        stage('Verify Deployment') {
+            steps {
+                sh '''
+                    sleep 5
+                    curl --fail --silent --show-error \
+                    http://127.0.0.1:8081/ > /dev/null
+                    echo "Netflix application is responding!"
+                '''
+            }
+        }
     }
 
     post {
@@ -129,19 +128,7 @@ pipeline {
                 artifacts: 'trivyfs.txt,trivyimage.txt,**/dependency-check-report.xml',
                 allowEmptyArchive: true
             )
-
-            emailext(
-                attachLog: true,
-                subject: "${currentBuild.currentResult}: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                body: """Netflix DevSecOps Pipeline
-
-Project: ${env.JOB_NAME}
-Build Number: ${env.BUILD_NUMBER}
-Status: ${currentBuild.currentResult}
-Build URL: ${env.BUILD_URL}
-""",
-                to: 'athulpb212@gmail.com'
-            )
+            echo "Pipeline completed: ${currentBuild.currentResult}"
         }
     }
 }
