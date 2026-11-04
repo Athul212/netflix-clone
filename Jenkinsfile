@@ -12,6 +12,10 @@ pipeline {
         DOCKER_IMAGE = 'athul212/netflix'
     }
 
+    options {
+        disableConcurrentBuilds()
+    }
+
     stages {
 
         stage('Checkout Code') {
