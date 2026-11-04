@@ -41,7 +41,19 @@ pipeline {
 
         stage('OWASP Dependency Check') {
             steps {
-                echo 'OWASP scan temporarily skipped - NVD database synchronization pending'
+                dependencyCheck(
+                    odcInstallation: 'dp-check',
+                    nvdCredentialsId: 'nvd-api-key',
+                    additionalArguments: '--scan . --format XML --format HTML --out .'
+                )
+            }
+        }
+
+        stage('Publish OWASP Report') {
+            steps {
+                dependencyCheckPublisher(
+                    pattern: '**/dependency-check-report.xml'
+                )
             }
         }
 
@@ -64,12 +76,12 @@ pipeline {
                         credentialsId: 'docker',
                         url: 'https://index.docker.io/v1/'
                     ) {
-                        sh """
+                        sh '''
                             docker build \
-                            -t ${DOCKER_IMAGE}:${BUILD_NUMBER} .
+                            -t "$DOCKER_IMAGE:$BUILD_NUMBER" .
 
-                            docker push ${DOCKER_IMAGE}:${BUILD_NUMBER}
-                        """
+                            docker push "$DOCKER_IMAGE:$BUILD_NUMBER"
+                        '''
                     }
                 }
             }
@@ -77,27 +89,27 @@ pipeline {
 
         stage('Trivy Docker Image Scan') {
             steps {
-                sh """
+                sh '''
                     trivy image \
                     --scanners vuln \
                     --format table \
                     --output trivyimage.txt \
-                    ${DOCKER_IMAGE}:${BUILD_NUMBER}
-                """
+                    "$DOCKER_IMAGE:$BUILD_NUMBER"
+                '''
             }
         }
 
         stage('Deploy Netflix Application') {
             steps {
-                sh """
+                sh '''
                     docker rm -f netflix || true
 
                     docker run -d \
                     --name netflix \
                     --restart unless-stopped \
                     -p 127.0.0.1:8081:80 \
-                    ${DOCKER_IMAGE}:${BUILD_NUMBER}
-                """
+                    "$DOCKER_IMAGE:$BUILD_NUMBER"
+                '''
             }
         }
 
@@ -118,11 +130,19 @@ pipeline {
     post {
         always {
             archiveArtifacts(
-                artifacts: 'trivyfs.txt,trivyimage.txt',
+                artifacts: 'trivyfs.txt,trivyimage.txt,dependency-check-report.xml,dependency-check-report.html',
                 allowEmptyArchive: true
             )
 
             echo "Pipeline completed: ${currentBuild.currentResult}"
+        }
+
+        success {
+            echo 'Netflix DevSecOps Pipeline Completed Successfully!'
+        }
+
+        failure {
+            echo 'Pipeline Failed! Check Jenkins Console Output.'
         }
     }
 }
